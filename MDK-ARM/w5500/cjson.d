@@ -1,0 +1,10 @@
+w5500\cjson.o: ..\BSP\cJSON\cJSON.c
+w5500\cjson.o: E:\ARM\ARMCC\Bin\..\include\string.h
+w5500\cjson.o: E:\ARM\ARMCC\Bin\..\include\stdio.h
+w5500\cjson.o: E:\ARM\ARMCC\Bin\..\include\math.h
+w5500\cjson.o: E:\ARM\ARMCC\Bin\..\include\stdlib.h
+w5500\cjson.o: E:\ARM\ARMCC\Bin\..\include\limits.h
+w5500\cjson.o: E:\ARM\ARMCC\Bin\..\include\ctype.h
+w5500\cjson.o: E:\ARM\ARMCC\Bin\..\include\float.h
+w5500\cjson.o: ..\BSP\cJSON\cJSON.h
+w5500\cjson.o: E:\ARM\ARMCC\Bin\..\include\stddef.h
