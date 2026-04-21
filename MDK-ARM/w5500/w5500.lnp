@@ -4,6 +4,7 @@
 "w5500\gpio.o"
 "w5500\i2c.o"
 "w5500\spi.o"
+"w5500\tim.o"
 "w5500\usart.o"
 "w5500\stm32f1xx_it.o"
 "w5500\stm32f1xx_hal_msp.o"
@@ -44,6 +45,8 @@
 "w5500\mqttunsubscribeclient.o"
 "w5500\mqttunsubscribeserver.o"
 "w5500\cjson.o"
+"w5500\control.o"
+"w5500\sensor.o"
 --library_type=microlib --strict --scatter "w5500\w5500.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

@@ -1,5 +1,4 @@
 w5500\stm32f1xx_it.o: ../Core/Src/stm32f1xx_it.c
-w5500\stm32f1xx_it.o: ../Core/Inc/stm32f1xx_it.h
 w5500\stm32f1xx_it.o: ../Core/Inc/main.h
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h
 w5500\stm32f1xx_it.o: ../Core/Inc/stm32f1xx_hal_conf.h
@@ -28,4 +27,7 @@ w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_i2c.h
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h
+w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
+w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
+w5500\stm32f1xx_it.o: ../Core/Inc/stm32f1xx_it.h

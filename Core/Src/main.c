@@ -18,10 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "gpio.h"
 #include "i2c.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -32,7 +33,11 @@
 #include "w5500.h"
 #include "wizchip_conf.h"
 #include <stdio.h>
-// 串口1重定�?
+#include "sensor.h"
+#include "control.h"
+extern void Sensor_task(void);
+// 串口1重定�??
+
 int fputc(int ch, FILE *f) {
   HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
   return ch;
@@ -75,7 +80,7 @@ int32_t udp_loopback(uint8_t sn, uint8_t *buf, uint16_t port) {
                remote_ip[0], remote_ip[1], remote_ip[2], remote_ip[3],
                remote_port);
 
-        // 可选：打印收到的数据（十六进制）
+        // 可�?�：打印收到的数据（十六进制�?
         printf("Data: ");
         for (int i = 0; i < ret; i++) {
           printf("%02X ", buf[i]);
@@ -127,7 +132,7 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
   switch (tcp_status) {
   case SOCK_CLOSED: // 初始化TCP
                     //  打开 TCP Socket
-    // 参数: (sn, 协议模式, 端口, 标志位)
+    // 参数: (sn, 协议模式, 端口, 标志�?)
     // Sn_MR_TCP = 0x01, SF_IO_NONBLOCK = 0x40
     ret = socket(sn, Sn_MR_TCP, port, SF_IO_NONBLOCK);
 
@@ -145,7 +150,7 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
     }
 
     break;
-  case SOCK_LISTEN: // 监听状态下不用做操作
+  case SOCK_LISTEN: // 监听状�?�下不用做操�?
     break;
   case SOCK_ESTABLISHED: // 成功建立连接
     if (!g_client_connected) {
@@ -183,7 +188,7 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
         }
       } else if (ret == SOCK_BUSY) {
       } else if (ret == SOCKERR_SOCKSTATUS) {
-        // 连接已断开
+        // 连接已断�?
         printf("[TCP] Connection lost during recv\r\n");
         g_client_connected = 0;
       } else {
@@ -191,13 +196,13 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
       }
     }
     break;
-  // 状态 5: SOCK_CLOSE_WAIT - 对端请求断开，等待本端关闭
+  // 状�?? 5: SOCK_CLOSE_WAIT - 对端请求断开，等待本端关�?
   case SOCK_CLOSE_WAIT:
     g_client_connected = 0;
     ret = disconnect(sn);
     if (ret != SOCK_OK) {
       printf("[TCP] disconnect() failed: %ld\r\n", (long)ret);
-      // 如果 disconnect 失败，强制 close
+      // 如果 disconnect 失败，强�? close
       close(sn);
     }
 
@@ -221,9 +226,9 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
 /* USER CODE BEGIN PV */
 
 #define PHYCFGR_OPMDC_MASK 0x38 // bits 5-3
-#define PHYCFGR_DPX (1 << 2)    // 双工状态
+#define PHYCFGR_DPX (1 << 2)    // 双工状�??
 #define PHYCFGR_SPD (1 << 1)    // 速度 (1=100M, 0=10M)
-#define PHYCFGR_LNK (1 << 0)    // 链路状态
+#define PHYCFGR_LNK (1 << 0)    // 链路状�??
 uint8_t get_link_status(void) { return getPHYCFGR() & PHYCFGR_LNK; }
 uint8_t get_link_speed(void) { return (getPHYCFGR() & PHYCFGR_SPD) ? 100 : 10; }
 const char *get_full_duplex(void) {
@@ -265,18 +270,18 @@ void SystemClock_Config(void);
 /* USER CODE END 0 */
 
 /**
- * @brief  The application entry point.
- * @retval int
- */
-int main(void) {
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick.
-   */
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -295,6 +300,7 @@ int main(void) {
   MX_SPI1_Init();
   MX_USART1_UART_Init();
   MX_I2C1_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   // MPU6050_Init();
   w5500_init();
@@ -323,22 +329,15 @@ int main(void) {
 	 printf("  - Network cable is connected\r\n");
 	 printf("  - Firewall allows port 1883\r\n");
 	}
-	
-		uint32_t last_publish_time = HAL_GetTick();
-    uint32_t last_heartbeat_time = HAL_GetTick();
-    
+	HAL_TIM_Base_Start_IT(&htim4);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
 		mqtt_loop();
-		
-		if(HAL_GetTick() - last_publish_time > 10000)
-		{
-		Publish_Test_Data();
-			last_publish_time = HAL_GetTick();
-		}
+	  Sensor_task();
+		key_control();
     // udp_loopback(SOCKET_UDP,g_udp_buf,UDP_PORT);
     // tcp_server_task(SOCKET_TCP_SERVER, g_tcp_buffer, SOCKET_PORT);
     /* USER CODE END WHILE */
@@ -349,16 +348,17 @@ int main(void) {
 }
 
 /**
- * @brief System Clock Configuration
- * @retval None
- */
-void SystemClock_Config(void) {
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
-   * in the RCC_OscInitTypeDef structure.
-   */
+  * in the RCC_OscInitTypeDef structure.
+  */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
@@ -366,20 +366,22 @@ void SystemClock_Config(void) {
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
     Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
-                                RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
     Error_Handler();
   }
 }
@@ -389,10 +391,11 @@ void SystemClock_Config(void) {
 /* USER CODE END 4 */
 
 /**
- * @brief  This function is executed in case of error occurrence.
- * @retval None
- */
-void Error_Handler(void) {
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
@@ -401,15 +404,16 @@ void Error_Handler(void) {
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
+#ifdef  USE_FULL_ASSERT
 /**
- * @brief  Reports the name of the source file and the source line number
- *         where the assert_param error has occurred.
- * @param  file: pointer to the source file name
- * @param  line: assert_param error line source number
- * @retval None
- */
-void assert_failed(uint8_t *file, uint32_t line) {
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line
      number, ex: printf("Wrong parameters value: file %s on line %d\r\n", file,

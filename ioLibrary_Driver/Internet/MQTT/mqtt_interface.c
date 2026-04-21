@@ -120,13 +120,28 @@ void NewNetwork(Network *n, int sn) {
 int w5x00_read(Network *n, unsigned char *buffer, int len, int timeout) {
   uint32_t start_tick = HAL_GetTick();
   int recv_len = 0;
+
   while (recv_len < len) {
-    int ret = recv(n->my_socket, buffer + recv_len, len - recv_len);
-    if (ret > 0) {
-      recv_len += ret;
-    } else if (ret != SOCK_BUSY && ret < 0) {
-      return ret; // Error
+    // 【核心改进】先检查硬件接收缓冲区是否有数据
+    // 这样即使 Socket 处于阻塞模式，如果没有数据我们也不会调用 recv()
+    uint16_t rsr = getSn_RX_RSR(n->my_socket);
+
+    if (rsr > 0) {
+      // 缓冲区有数据，只读我们需要的部分或缓冲区现有的部分
+      uint16_t can_read = (rsr > (len - recv_len)) ? (len - recv_len) : rsr;
+      int ret = recv(n->my_socket, buffer + recv_len, can_read);
+      if (ret > 0) {
+        recv_len += ret;
+      } else if (ret < 0) {
+        return ret; // 物理连接断开等真正错误
+      }
+    } else {
+      // 硬件缓冲区没数据，微小延迟避免过快轮询 SPI
+      for (volatile int i = 0; i < 100; i++)
+        ;
     }
+
+    // 只有超过了库指定的 timeout，才跳出循环
     if ((HAL_GetTick() - start_tick) > timeout)
       break;
   }
@@ -149,9 +164,12 @@ int w5x00_write(Network *n, unsigned char *buffer, int len, int timeout) {
     int ret = send(n->my_socket, buffer + sent_len, len - sent_len);
     if (ret > 0) {
       sent_len += ret;
-    } else if (ret != SOCK_BUSY && ret < 0) {
-      return ret; // Error
+    } else if (ret == SOCK_BUSY) {
+      // 继续等待
+    } else if (ret < 0) {
+      return ret;
     }
+
     if ((HAL_GetTick() - start_tick) > timeout)
       break;
   }
@@ -174,23 +192,16 @@ void w5x00_disconnect(Network *n) { disconnect(n->my_socket); }
     @retval SOCKOK code or SOCKERR code
 */
 int ConnectNetwork(Network *n, uint8_t *ip, uint16_t port) {
-  uint16_t myport = 12345;
+  uint16_t myport = 0; // 自动随机端口
 
   if (socket(n->my_socket, Sn_MR_TCP, myport, 0) != n->my_socket) {
     return SOCK_ERROR;
   }
 
-#if 1
-  // 20231016 taylor//teddy 240122
-#if ((_WIZCHIP_ == 6100) || (_WIZCHIP_ == 6300))
-  if (connect(n->my_socket, ip, port, 4) != SOCK_OK)
-#else
-  if (connect(n->my_socket, ip, port) != SOCK_OK)
-#endif
-#else
-  if (connect(n->my_socket, ip, port) != SOCK_OK)
-#endif
+  // 重要：连接阶段保持默认的【阻塞模式】，确保握手稳定
+  if (connect(n->my_socket, ip, port) != SOCK_OK) {
     return SOCK_ERROR;
+  }
 
   return SOCK_OK;
 }

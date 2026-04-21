@@ -172,7 +172,8 @@ void mqtt_init(void) {
 }
 
 void mqtt_loop(void) {
-    MQTTYield(&c, 100); // 100ms 轮询处理
+    // 将超时时间缩短为 1ms，确保主循环能够快速轮询
+    MQTTYield(&c, 1);
 }
 ```
 
@@ -180,18 +181,29 @@ void mqtt_loop(void) {
 
 ## 3. 使用流程说明
 
-1.  **硬件准备**：确保 W5500 SPI 通信正常，`w5500_init()` 静态 IP 配置无误。**注意：W5500 的 IP 必须与 Broker IP (192.168.1.200) 在同一网段。**
-2.  **配置宏定义**：在 `mqtt_app.h` 中修改以下宏：
-    - `MQTT_SOCKET`: 2
-    - `MQTT_BROKER_IP`: "192.168.1.200"
-    - `PUB_TOPIC`: "device/data"
-    - `SUB_TOPIC`: "device/control"
-3.  **代码移植**：将底层适配代码和应用代码复制到工程，并在 `main.c` 中初始化。
+1.  **硬件准备**：确保 W5500 SPI 通信正常，`w5500_init()` 静态 IP 配置无误。
+2.  **主循环轮询**：在 `main.c` 的 `while(1)` 中必须同时调用 `mqtt_loop()` 和传感器任务。
+    ```c
+    while (1) {
+        mqtt_loop();    // 处理 MQTT 收发
+        Sensor_task();  // 处理定时发布逻辑
+    }
+    ```
+3.  **定时发布逻辑**：建议在 `Sensor_task` 中使用 `HAL_GetTick()` 实现非阻塞定时。
+    ```c
+    void Sensor_task(void) {
+        static uint32_t last_tick = 0;
+        if (HAL_GetTick() - last_tick > 1000) { // 1秒发布一次
+            Publish_sensor_temp_humi();
+            last_tick = HAL_GetTick();
+        }
+    }
+    ```
 4.  **联调测试**：
     - 打开 **MQTTX**，连接 `192.168.1.200:1883`。
     - 订阅主题 `device/data`。
-    - 向主题 `device/control` 发送消息。
-    - 验证 W5500 串口打印接收内容，并检查 MQTTX 是否收到回传。
+    - 验证 W5500 是否每秒自动发送一次数据。
+    - 向主题 `device/control` 发送控制指令，验证响应。
 
 ---
 
