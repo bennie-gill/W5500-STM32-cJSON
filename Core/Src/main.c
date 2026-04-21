@@ -301,6 +301,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   MX_TIM4_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   // MPU6050_Init();
   w5500_init();
