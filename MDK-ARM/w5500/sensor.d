@@ -44,3 +44,9 @@ w5500\sensor.o: ../ioLibrary_Driver/Internet/MQTT/./MQTTPacket/src/MQTTFormat.h
 w5500\sensor.o: ../ioLibrary_Driver/Internet/MQTT/./MQTTPacket/src/StackTrace.h
 w5500\sensor.o: ../ioLibrary_Driver/Internet/MQTT/./MQTTPacket/src/MQTTPacket.h
 w5500\sensor.o: ../ioLibrary_Driver/Internet/MQTT/mqtt_interface.h
+w5500\sensor.o: ..\BSP\DHT11.h
+w5500\sensor.o: ../Core/Inc/usart.h
+w5500\sensor.o: ../Core/Inc/gpio.h
+w5500\sensor.o: ..\BSP\RS485.h
+w5500\sensor.o: E:\ARM\ARMCC\Bin\..\include\stdbool.h
+w5500\sensor.o: E:\ARM\ARMCC\Bin\..\include\string.h

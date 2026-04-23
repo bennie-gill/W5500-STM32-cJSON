@@ -45,3 +45,7 @@ w5500\control.o: ../ioLibrary_Driver/Internet/MQTT/./MQTTPacket/src/MQTTFormat.h
 w5500\control.o: ../ioLibrary_Driver/Internet/MQTT/./MQTTPacket/src/StackTrace.h
 w5500\control.o: ../ioLibrary_Driver/Internet/MQTT/./MQTTPacket/src/MQTTPacket.h
 w5500\control.o: ../ioLibrary_Driver/Internet/MQTT/mqtt_interface.h
+w5500\control.o: ..\BSP\RS485.h
+w5500\control.o: ../Core/Inc/usart.h
+w5500\control.o: E:\ARM\ARMCC\Bin\..\include\stdbool.h
+w5500\control.o: E:\ARM\ARMCC\Bin\..\include\string.h

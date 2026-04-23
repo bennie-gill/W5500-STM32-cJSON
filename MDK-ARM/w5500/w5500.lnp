@@ -2,6 +2,7 @@
 "w5500\startup_stm32f103xe.o"
 "w5500\main.o"
 "w5500\gpio.o"
+"w5500\dma.o"
 "w5500\i2c.o"
 "w5500\spi.o"
 "w5500\tim.o"
@@ -47,6 +48,8 @@
 "w5500\cjson.o"
 "w5500\control.o"
 "w5500\sensor.o"
+"w5500\dht11.o"
+"w5500\rs485.o"
 --library_type=microlib --strict --scatter "w5500\w5500.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

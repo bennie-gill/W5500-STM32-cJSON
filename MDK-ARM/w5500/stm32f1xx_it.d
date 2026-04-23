@@ -1,4 +1,5 @@
 w5500\stm32f1xx_it.o: ../Core/Src/stm32f1xx_it.c
+w5500\stm32f1xx_it.o: ../Core/Inc/stm32f1xx_it.h
 w5500\stm32f1xx_it.o: ../Core/Inc/main.h
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h
 w5500\stm32f1xx_it.o: ../Core/Inc/stm32f1xx_hal_conf.h
@@ -30,4 +31,9 @@ w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 w5500\stm32f1xx_it.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
-w5500\stm32f1xx_it.o: ../Core/Inc/stm32f1xx_it.h
+w5500\stm32f1xx_it.o: ../BSP/RS485.h
+w5500\stm32f1xx_it.o: ../Core/Inc/gpio.h
+w5500\stm32f1xx_it.o: ../Core/Inc/usart.h
+w5500\stm32f1xx_it.o: E:\ARM\ARMCC\Bin\..\include\stdbool.h
+w5500\stm32f1xx_it.o: E:\ARM\ARMCC\Bin\..\include\stdio.h
+w5500\stm32f1xx_it.o: E:\ARM\ARMCC\Bin\..\include\string.h

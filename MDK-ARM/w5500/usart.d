@@ -31,3 +31,8 @@ w5500\usart.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h
 w5500\usart.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 w5500\usart.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 w5500\usart.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
+w5500\usart.o: ../BSP/RS485.h
+w5500\usart.o: ../Core/Inc/gpio.h
+w5500\usart.o: E:\ARM\ARMCC\Bin\..\include\stdbool.h
+w5500\usart.o: E:\ARM\ARMCC\Bin\..\include\stdio.h
+w5500\usart.o: E:\ARM\ARMCC\Bin\..\include\string.h

@@ -44,7 +44,8 @@ void MX_TIM1_Init(void);
 void MX_TIM4_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+void delay_us(uint32_t nus);
+void delay_ms(uint32_t ms);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

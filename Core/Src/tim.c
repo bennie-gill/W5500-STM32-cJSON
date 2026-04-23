@@ -171,5 +171,45 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 }
 
 /* USER CODE BEGIN 1 */
+void delay_ms(uint32_t ms)
+{
+HAL_Delay(ms);
+}
 
+static uint16_t g_fac_us = 0;      /* usÑÓÊ±±¶³ËÊý */
+void delay_init(void)
+{
+    HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+    g_fac_us = SystemCoreClock / 1000000;
+}
+
+void delay_us(uint32_t nus)
+{
+    uint32_t ticks;
+    uint32_t told, tnow, tcnt = 0;
+    uint32_t reload = SysTick->LOAD;
+    
+    ticks = nus * g_fac_us;
+    told = SysTick->VAL;
+    while (1)
+    {
+        tnow = SysTick->VAL;
+        if (tnow != told)
+        {
+            if (tnow < told)
+            {
+                tcnt += told - tnow;
+            }
+            else
+            {
+                tcnt += reload - tnow + told;
+            }
+            told = tnow;
+            if (tcnt >= ticks)
+            {
+                break;
+            }
+        }
+    }
+}
 /* USER CODE END 1 */

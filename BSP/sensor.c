@@ -1,34 +1,41 @@
 #include "sensor.h"
 #include "control.h"
 #include "mqtt_app.h"
-void Sensor_Init(void);
-void Sensor_Read_TempHumi(float *temperature, float *humidity);
-uint16_t Sensor_Read_CO2(void);
-
-static float mock_temperature = 25.0f;
-static float mock_humidity = 60.0f;
+#include "DHT11.h"
+#include "RS485.h"
 static uint16_t mock_co2 = 450;
 extern void MQTT_Publish_Alert(uint16_t co2_value, uint8_t alarm);
 static uint8_t last_alert = 0;
 
 void Sensor_Read_TempHumi(float *temp, float *humi) {
-  /* Ä£ÄâÊý¾Ý±ä»¯ */
-  mock_temperature += 0.1f;
-  if (mock_temperature > 30.0f)
-    mock_temperature = 20.0f;
+  if (temp == NULL || humi == NULL) {
+    return;
+  }
 
-  mock_humidity += 0.5f;
-  if (mock_humidity > 80.0f)
-    mock_humidity = 40.0f;
+  ENV snapshot;
+  uint32_t age_ms = 0xFFFFFFFFu;
+  if (RS485_GetEnv(&snapshot, &age_ms, NULL) && age_ms != 0xFFFFFFFFu && age_ms < 5000u &&
+      snapshot.temp != 0.0f && snapshot.hum != 0.0f) {
+    *temp = snapshot.temp;
+    *humi = snapshot.hum;
+    return;
+  }
 
-  *temp = mock_temperature;
-  *humi = mock_humidity;
+  int err = dht11_read_data(temp, humi);
+  if (!err) {
+    printf("get temp humi sucess\r\n");
+  }
 }
-
 uint16_t Sensor_Read_CO2(void) {
   static int direction = 1;
+  ENV snapshot;
+  uint32_t age_ms = 0xFFFFFFFFu;
+  if (RS485_GetEnv(&snapshot, NULL, &age_ms) && age_ms != 0xFFFFFFFFu && age_ms < 5000u &&
+      snapshot.co2 != 0) {
+    return snapshot.co2;
+  }
 
-  // 1. ÏÈÅÐ¶Ï·½Ïò£¬ÔÙÖ´ÐÐ¼Ó¼õ£¬±ÜÃâÎÞ·ûºÅÊýÒç³ö
+  // 1. ï¿½ï¿½ï¿½Ð¶Ï·ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½Ð¼Ó¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   if (direction == 1) {
     if (mock_co2 >= 1200) {
       direction = -1;
@@ -54,10 +61,10 @@ static void CO2_Alert_Check(uint16_t co2) {
     if (current_alert) {
       printf("CO2 ALERT! Value: %d ppm (Threshold: %d)\n", co2, CO2_THRESHOLD);
       MQTT_Publish_Alert(co2, g_device.co2_alarm);
-      Contorl_co2(g_device.co2_alarm);
+      Control_co2(g_device.co2_alarm);
     } else {
       MQTT_Publish_Alert(co2, g_device.co2_alarm);
-      Contorl_co2(0);
+      Control_co2(0);
     }
     last_alert = current_alert;
   }
@@ -66,15 +73,21 @@ static void CO2_Alert_Check(uint16_t co2) {
 void Sensor_task(void) {
   static uint32_t last_read = 0;
   static uint32_t last_upload = 0;
+  static uint32_t last_rs485_poll = 0;
   uint32_t now = HAL_GetTick();
 
-  // 1Ãë¶ÁÈ¡Ò»´Î´«¸ÐÆ÷²¢·¢²¼
+  if (now - last_rs485_poll >= 200) {
+    RS485_Poll_Slaves();
+    last_rs485_poll = now;
+  }
+
+  // 1ï¿½ï¿½ï¿½È¡Ò»ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   if (now - last_read >= 1000) {
     uint16_t co2;
     co2 = Sensor_Read_CO2();
 
-    // ¡¾ÐÞ¸Äµã¡¿Ê¼ÖÕ·¢²¼ CO2 Êý¾Ý£¬¶ø²»½ö½öÔÚ±¨¾¯×´Ì¬±ä»¯Ê±·¢²¼
-    // ÕâÑù MQTTX ¾ÍÄÜ³ÖÐø¿´µ½ CO2 µÄÊµÊ±ÊýÖµ
+    // ï¿½ï¿½ï¿½Þ¸Äµã¡¿Ê¼ï¿½Õ·ï¿½ï¿½ï¿½ CO2 ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú±ï¿½ï¿½ï¿½×´Ì¬ï¿½ä»¯Ê±ï¿½ï¿½ï¿½ï¿½
+    // ï¿½ï¿½ï¿½ï¿½ MQTTX ï¿½ï¿½ï¿½Ü³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ CO2 ï¿½ï¿½ÊµÊ±ï¿½ï¿½Öµ
     MQTT_Publish_Alert(co2, (co2 > CO2_THRESHOLD) ? 1 : 0);
 
     CO2_Alert_Check(co2);
@@ -84,10 +97,11 @@ void Sensor_task(void) {
     last_read = now;
   }
 
-  // 2Ãë·¢²¼Ò»´ÎÈ«Éè±¸×´Ì¬
+  // 2ï¿½ë·¢ï¿½ï¿½Ò»ï¿½ï¿½È«ï¿½è±¸×´Ì¬
   if (now - last_upload >= 2000) {
     printf("[Sensor] Periodically publishing all status...\r\n");
     Send_All_Device_Status();
     last_upload = now;
   }
 }
+

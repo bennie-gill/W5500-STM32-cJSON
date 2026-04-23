@@ -38,15 +38,12 @@ void Publish_Device_Command(const char *device_name, uint8_t state,
   }
   cJSON_AddBoolToObject(root, device_name, state ? true : false);
   cJSON_AddNumberToObject(root, "id", device_id);
-  char *json_string = cJSON_PrintUnformatted(root);
-  if (json_string == NULL) {
+  if (!cJSON_PrintPreallocated(root, payload_mqtt_buff,
+                               sizeof(payload_mqtt_buff), 0)) {
     printf("JSON string create failed\r\n");
     cJSON_Delete(root);
     return;
   }
-  strncpy(payload_mqtt_buff, json_string, sizeof(payload_mqtt_buff) - 1);
-  payload_mqtt_buff[sizeof(payload_mqtt_buff) - 1] = '\0';
-  cJSON_free(json_string);
   MQTTMessage msg;
   msg.qos = QOS0;
   msg.payload = payload_mqtt_buff;
@@ -68,47 +65,52 @@ void Send_spray_Command(uint8_t state, uint8_t id) {
   Publish_Device_Command("spray", state, id);
 }
 
-// ???????????õô??
+// ???????????ï¿½ï¿½??
 void Send_All_Device_Status(void) {
   cJSON *root = cJSON_CreateObject();
+  if (root == NULL) {
+    return;
+  }
 
-  // ?????õô??
+  // ?????ï¿½ï¿½??
   cJSON_AddBoolToObject(root, "lamp", g_device.lamp_state ? true : false);
   cJSON_AddBoolToObject(root, "fun", g_device.fun_state ? true : false);
   cJSON_AddBoolToObject(root, "spray", g_device.spray_state ? true : false);
 
   // ?????????????
-  cJSON_AddNumberToObject(root, "temp", 23.5);
-  cJSON_AddNumberToObject(root, "humi", 62.3);
+  float temp = 0.0f;
+  float humi = 0.0f;
+  Sensor_Read_TempHumi(&temp, &humi);
+  cJSON_AddNumberToObject(root, "temp", temp);
+  cJSON_AddNumberToObject(root, "humi", humi);
+  uint16_t co2 = Sensor_Read_CO2();
+  cJSON_AddNumberToObject(root, "co2", co2);
+  cJSON_AddBoolToObject(root, "co2_alarm", g_device.co2_alarm ? true : false);
 
   // ????????
   cJSON_AddNumberToObject(root, "timestamp", HAL_GetTick());
 
-  // ?????õô???
+  // ?????ï¿½ï¿½???
   cJSON_AddStringToObject(root, "device_id", "STM32_W5500");
   cJSON_AddNumberToObject(root, "version", 1);
-
-  char *json_string = cJSON_PrintUnformatted(root);
-
-  if (json_string != NULL) {
-    strncpy(payload_mqtt_buff, json_string, sizeof(payload_mqtt_buff) - 1);
-    payload_mqtt_buff[sizeof(payload_mqtt_buff) - 1] = '\0';
-    MQTTMessage msg;
-    msg.qos = QOS0;
-    msg.retained = 0;
-    msg.payload = (void *)payload_mqtt_buff;
-    msg.payloadlen = strlen(payload_mqtt_buff);
-
-    int rc = MQTTPublish(&g_MQTTclient, PUB_TOPIC, &msg);
-    if (rc != SUCCESSS && g_MQTTclient.isconnected) {
-      printf("[ERROR] MQTT publish failed, rc=%d\r\n", rc);
-    }
-    cJSON_free(json_string);
-  } else {
+  if (!cJSON_PrintPreallocated(root, payload_mqtt_buff,
+                               sizeof(payload_mqtt_buff), 0)) {
     if (g_MQTTclient.isconnected) {
-      printf("[ERROR] Send_All_Device_Status: JSON string creation failed (Low "
-             "Memory?)\r\n");
+      printf("[ERROR] Send_All_Device_Status: JSON string creation failed\r\n");
     }
+    cJSON_Delete(root);
+    return;
+  }
+
+  MQTTMessage msg;
+  msg.qos = QOS0;
+  msg.retained = 0;
+  msg.payload = (void *)payload_mqtt_buff;
+  msg.payloadlen = strlen(payload_mqtt_buff);
+
+  int rc = MQTTPublish(&g_MQTTclient, PUB_TOPIC, &msg);
+  if (rc != SUCCESSS && g_MQTTclient.isconnected) {
+    printf("[ERROR] MQTT publish failed, rc=%d\r\n", rc);
   }
 
   cJSON_Delete(root);
@@ -125,13 +127,11 @@ void Publish_sensor_temp_humi(void) {
   }
   cJSON_AddNumberToObject(root, "temp", temp);
   cJSON_AddNumberToObject(root, "humi", humi);
-  char *json_string = cJSON_PrintUnformatted(root);
-  if (json_string == NULL) {
+  if (!cJSON_PrintPreallocated(root, payload_mqtt_buff,
+                               sizeof(payload_mqtt_buff), 0)) {
     cJSON_Delete(root);
     return;
   }
-  strncpy(payload_mqtt_buff, json_string, sizeof(payload_mqtt_buff));
-  payload_mqtt_buff[sizeof(payload_mqtt_buff) - 1] = '\0';
   MQTTMessage msg;
   msg.qos = QOS0;
   msg.payload = payload_mqtt_buff;
@@ -141,8 +141,6 @@ void Publish_sensor_temp_humi(void) {
   if (rc != SUCCESSS && g_MQTTclient.isconnected) {
     printf("[ERROR] MQTT publish failed, rc=%d\r\n", rc);
   }
-
-  cJSON_free(json_string);
   cJSON_Delete(root);
 }
 void MQTT_Publish_Alert(uint16_t co2_value, uint8_t alarm) {
@@ -158,37 +156,31 @@ void MQTT_Publish_Alert(uint16_t co2_value, uint8_t alarm) {
   cJSON_AddBoolToObject(root, "alert", alarm ? true : false);
   cJSON_AddStringToObject(root, "status", alarm ? "alert" : "normal");
   cJSON_AddNumberToObject(root, "timestamp", HAL_GetTick());
-
-  char *cjson_string = cJSON_PrintUnformatted(root);
-
-  if (cjson_string == NULL) {
+  if (!cJSON_PrintPreallocated(root, payload_mqtt_buff,
+                               sizeof(payload_mqtt_buff), 0)) {
     cJSON_Delete(root);
     return;
   }
-  strncpy(payload_mqtt_buff, cjson_string, sizeof(payload_mqtt_buff));
-  payload_mqtt_buff[sizeof(payload_mqtt_buff) - 1] = '\0';
 
   MQTTMessage msg;
   msg.qos = QOS0;
   msg.retained = 0;
-  msg.payload = cjson_string;
-  msg.payloadlen = strlen(cjson_string);
+  msg.payload = payload_mqtt_buff;
+  msg.payloadlen = strlen(payload_mqtt_buff);
 
   int rc = MQTTPublish(&g_MQTTclient, PUB_TOPIC, &msg);
 
   if (rc != SUCCESSS && g_MQTTclient.isconnected) {
     printf("[ERROR] MQTT publish failed, rc=%d\r\n", rc);
   }
-
-  cJSON_free(cjson_string);
   cJSON_Delete(root);
 }
 //{"lamp":false,"id":0}
 static uint8_t Parse_JSON_Command(char *payload) {
   cJSON *root = NULL;
 
-  // 1. ´¦Àí¿ÉÄÜµÄÊý×é°ü¹ü¸ñÊ½: [{"fun":false,"id":3}]
-  // Èç¹ûÊÕµ½µÄÊÇÊý×é£¬ÏÈ³¢ÊÔ½âÎöÊý×é²¢È¡µÚÒ»¸ö¶ÔÏó
+  // 1. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Üµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½: [{"fun":false,"id":3}]
+  // ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é£¬ï¿½È³ï¿½ï¿½Ô½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é²¢È¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   root = cJSON_Parse(payload);
   if (root == NULL) {
     printf("JSON Parse failed!\r\n");
@@ -206,7 +198,7 @@ static uint8_t Parse_JSON_Command(char *payload) {
 
   printf("JSON Parse SUCCESS!\r\n");
 
-  // 2. ½âÎöÉè±¸¿ØÖÆ
+  // 2. ï¿½ï¿½ï¿½ï¿½ï¿½è±¸ï¿½ï¿½ï¿½ï¿½
   int parsed = 0;
   for (int i = 0; i < DEVICE_MAX; i++) {
     cJSON *device_item = cJSON_GetObjectItem(item, g_device_names[i]);
@@ -214,37 +206,37 @@ static uint8_t Parse_JSON_Command(char *payload) {
       if (cJSON_IsBool(device_item)) {
         uint8_t new_state = (device_item->type == cJSON_True) ? 1 : 0;
         parsed = 1;
-				device_item = cJSON_GetObjectItem(item,"id");
-				if(device_item == NULL) return 0;
-				int  id = device_item->valuedouble;
+        device_item = cJSON_GetObjectItem(item, "id");
+        if (device_item == NULL) {
+          cJSON_Delete(root);
+          return 0;
+        }
+        int id = device_item->valuedouble;
         switch (i) {
         case DEVICE_LAMP:
-					if(id == DEVICE_LAMP_ID)
-					{
-          g_device.lamp_state = new_state;
-          Control_lamp(g_device.lamp_state);
-					}
+          if (id == DEVICE_LAMP_ID) {
+            g_device.lamp_state = new_state;
+            Control_lamp(g_device.lamp_state);
+          }
           break;
         case DEVICE_FAN:
-					if(id == DEVICE_FUN_ID)
-					{
-          g_device.fun_state = new_state;
-          Control_fun(g_device.fun_state);
-					}
+          if (id == DEVICE_FUN_ID) {
+            g_device.fun_state = new_state;
+            Control_fun(g_device.fun_state);
+          }
           break;
         case DEVICE_SPRAY:
-					if(id == DEVICE_SPRAY_ID)
-					{
-          g_device.spray_state = new_state;
-          Control_spray(g_device.spray_state);
-					}
+          if (id == DEVICE_SPRAY_ID) {
+            g_device.spray_state = new_state;
+            Control_spray(g_device.spray_state);
+          }
           break;
         }
       }
     }
   }
 
-  // 3. ½âÎö ID
+  // 3. ï¿½ï¿½ï¿½ï¿½ ID
   cJSON *id_item = cJSON_GetObjectItem(item, "id");
   if (id_item != NULL && cJSON_IsNumber(id_item)) {
     printf("Message ID: %d\r\n", (int)id_item->valuedouble);
@@ -297,11 +289,12 @@ void mqtt_init(void) {
   }
   printf("TCP Connected.\r\n");
 
-  // ¸ø TCP Á¬½ÓÒ»µãÎÈ¶¨Ê±¼ä
+  // ï¿½ï¿½ TCP ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½È¶ï¿½Ê±ï¿½ï¿½
   HAL_Delay(100);
 
   // 3. ????? MQTT ????????
-  // ½«ÃüÁî³¬Ê±Ê±¼ä´Ó 1000ms Ôö¼Óµ½ 5000ms£¬¸ø Broker ¸ü¶àµÄ´¦ÀíÊ±¼ä
+  // ï¿½ï¿½ï¿½ï¿½ï¿½î³¬Ê±Ê±ï¿½ï¿½ï¿½ 1000ms ï¿½ï¿½ï¿½Óµï¿½ 5000msï¿½ï¿½ï¿½ï¿½
+  // Broker ï¿½ï¿½ï¿½ï¿½Ä´ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
   MQTTClientInit(&g_MQTTclient, &g_network, 5000, mqtt_tx_buf, MQTT_BUF_SIZE,
                  mqtt_rx_buf, MQTT_BUF_SIZE);
   // 4. MQTT ????????? (Connect)
@@ -319,7 +312,7 @@ void mqtt_init(void) {
   }
   printf("MQTT Protocol Connected!\r\n");
 
-  // 5. ¶©ÔÄ¿ØÖÆÖ÷Ìâ
+  // 5. ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   rc = MQTTSubscribe(&g_MQTTclient, SUB_TOPIC, QOS0, messageArrived);
   if (rc != SUCCESSS) {
     printf("Subscribe Failed! Return Code: %d\r\n", rc);
@@ -327,9 +320,10 @@ void mqtt_init(void) {
     printf("Subscribed to topic: %s\r\n", SUB_TOPIC);
   }
 
-  // 6. ÒÆ³ýÇ¿ÖÆÇÐ»»·Ç×èÈûÄ£Ê½µÄÂß¼­
-  // ÏÖÔÚµÄ w5x00_read ÄÚ²¿»áÍ¨¹ý¼ì²é RSR ¼Ä´æÆ÷ÊµÏÖÂß¼­ÉÏµÄ·Ç×èÈû
-  // Õâ±ÈÍ¨¹ý ctlsocket ÇÐ»»¸ü¼ÓÎÈ¶¨
+  // 6. ï¿½Æ³ï¿½Ç¿ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ß¼ï¿½
+  // ï¿½ï¿½ï¿½Úµï¿½ w5x00_read ï¿½Ú²ï¿½ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ RSR
+  // ï¿½Ä´ï¿½ï¿½ï¿½Êµï¿½ï¿½ï¿½ß¼ï¿½ï¿½ÏµÄ·ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Í¨ï¿½ï¿½
+  // ctlsocket ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¶ï¿½
   printf("MQTT Protocol Ready (Software Non-blocking).\r\n");
 }
 
@@ -338,16 +332,16 @@ void mqtt_loop(void) {
   uint32_t now = HAL_GetTick();
 
   if (g_MQTTclient.isconnected) {
-    // 1. ´¦Àí MQTT ÊÂÎñ (Âß¼­·Ç×èÈû)
+    // 1. ï¿½ï¿½ï¿½ï¿½ MQTT ï¿½ï¿½ï¿½ï¿½ (ï¿½ß¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
     MQTTYield(&g_MQTTclient, 50);
 
-    // ¼ì²éÓ²¼þÊÇ·ñ»¹ÔÚ (·ÀÖ¹ SPI µôÏß)
+    // ï¿½ï¿½ï¿½Ó²ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ (ï¿½ï¿½Ö¹ SPI ï¿½ï¿½ï¿½ï¿½)
     if (getVERSIONR() != 0x04) {
       printf("[CRITICAL] W5500 hardware lost! Resetting connection...\r\n");
       g_MQTTclient.isconnected = 0;
     }
   } else {
-    // 2. ¶ÏÏß×Ô¶¯ÖØÁ¬Âß¼­ (Ã¿ 5 Ãë³¢ÊÔÒ»´Î)
+    // 2. ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¼ï¿½ (Ã¿ 5 ï¿½ë³¢ï¿½ï¿½Ò»ï¿½ï¿½)
     if (now - last_reconnect_tick > 5000) {
       last_reconnect_tick = now;
       printf("[RECONNECT] Attempting to reconnect MQTT...\r\n");

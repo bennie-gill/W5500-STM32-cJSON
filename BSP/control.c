@@ -2,30 +2,30 @@
 #include "tim.h"
 #include "gpio.h"
 #include "mqtt_app.h"
+#include "RS485.h"
  Control_Device_t g_device ;
 	 
  key_t key;
-void Control_init(void)
-{
-	Control_lamp(0);
-	
-}
-void Control_lamp(uint8_t state)
-{
-	printf("lamp:%s\r\n",state?"ON":"OFF");
-}
 
-void Control_fun(uint8_t state)
+//========???????????========
+void Control_lamp(uint8_t on)
 {
-	printf ("fun:%s\r\n",state?"ON":"OFF");
+	Send_to_Slave_write(on,REG_LAMP);
+	printf("lamp:%s\r\n",on?"ON":"OFF");
 }
-void Control_spray(uint8_t state)
+void Control_fun(uint8_t on)
 {
-printf ("SPRAY:%s\r\n",state?"ON":"OFF");
+	Send_to_Slave_write(on,REG_FAN);
+	printf ("fun:%s\r\n",on?"ON":"OFF");
 }
-void Contorl_co2(uint8_t state)
+void Control_spray(uint8_t on)
 {
-	printf ("alarm:%s\r\n",state?"ON":"OFF");
+	Send_to_Slave_write(on,REG_SPRAY);
+	printf ("SPRAY:%s\r\n",on?"ON":"OFF");
+}
+void Control_co2(uint8_t on)
+{
+	printf ("Alarm:%s\r\n",on?"ON":"OFF");
 }
 
 void key_scan(void)
@@ -93,7 +93,7 @@ if(key.long_flage == 1)
 {
 key.long_flage = 0;
 g_device.fun_state = !g_device.fun_state;
-Control_lamp(g_device.fun_state);
+Control_fun(g_device.fun_state);
 Send_fun_Command(g_device.fun_state,1);
 printf("fun toggled by KEY\n");
 }
@@ -101,7 +101,7 @@ if(key.long_long_flage == 1)
 {
 key.long_long_flage = 0;
 g_device.spray_state = !g_device.spray_state;
-Control_lamp(g_device.spray_state);
+Control_spray(g_device.spray_state);
 Send_spray_Command(g_device.spray_state,2);
 //MQTT_Publish_Status();
 printf("spray toggled by KEY\n");

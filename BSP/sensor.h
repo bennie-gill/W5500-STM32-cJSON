@@ -5,7 +5,7 @@
 
 #define CO2_THRESHOLD  1000
 
-/* º¯ÊýÉùÃ÷ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 void Sensor_Init(void);
 void Sensor_Read_TempHumi(float *temperature, float *humidity);
 uint16_t Sensor_Read_CO2(void);

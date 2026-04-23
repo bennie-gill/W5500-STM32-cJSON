@@ -25,10 +25,10 @@ typedef struct Key{
 extern Control_Device_t g_device ;
 extern key_t key;
 void Control_Init(void);
-void Control_lamp(uint8_t state);
-void Control_fun(uint8_t state);
-void Control_spray(uint8_t state);
-void Contorl_co2(uint8_t state);
+void Control_lamp(uint8_t on);
+void Control_fun(uint8_t on);
+void Control_spray(uint8_t on);
+void Control_co2(uint8_t on);
 void key_control(void);
 #endif
 

@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -36,7 +37,7 @@
 #include "sensor.h"
 #include "control.h"
 extern void Sensor_task(void);
-// 串口1重定�??
+// ??1?????
 
 int fputc(int ch, FILE *f) {
   HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
@@ -47,8 +48,8 @@ int fputc(int ch, FILE *f) {
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 // UDP
-#define SOCKET_UDP 0  // 使用 Socket 0
-#define UDP_PORT 5000 // 监听端口5000
+#define SOCKET_UDP 0  // ?? Socket 0
+#define UDP_PORT 5000 // ????5000
 #define DATA_BUF_SIZE 2048
 uint8_t g_udp_buf[DATA_BUF_SIZE];
 int32_t udp_loopback(uint8_t sn, uint8_t *buf, uint16_t port) {
@@ -80,7 +81,7 @@ int32_t udp_loopback(uint8_t sn, uint8_t *buf, uint16_t port) {
                remote_ip[0], remote_ip[1], remote_ip[2], remote_ip[3],
                remote_port);
 
-        // 可�?�：打印收到的数据（十六进制�?
+        // ???????????????????
         printf("Data: ");
         for (int i = 0; i < ret; i++) {
           printf("%02X ", buf[i]);
@@ -130,9 +131,9 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
     return ret;
   }
   switch (tcp_status) {
-  case SOCK_CLOSED: // 初始化TCP
-                    //  打开 TCP Socket
-    // 参数: (sn, 协议模式, 端口, 标志�?)
+  case SOCK_CLOSED: // ???TCP
+                    //  ?? TCP Socket
+    // ??: (sn, ????, ??, ????)
     // Sn_MR_TCP = 0x01, SF_IO_NONBLOCK = 0x40
     ret = socket(sn, Sn_MR_TCP, port, SF_IO_NONBLOCK);
 
@@ -150,9 +151,9 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
     }
 
     break;
-  case SOCK_LISTEN: // 监听状�?�下不用做操�?
+  case SOCK_LISTEN: // ?????????????
     break;
-  case SOCK_ESTABLISHED: // 成功建立连接
+  case SOCK_ESTABLISHED: // ??????
     if (!g_client_connected) {
       uint8_t client_ip[4];
       uint16_t client_port;
@@ -188,7 +189,7 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
         }
       } else if (ret == SOCK_BUSY) {
       } else if (ret == SOCKERR_SOCKSTATUS) {
-        // 连接已断�?
+        // ??????
         printf("[TCP] Connection lost during recv\r\n");
         g_client_connected = 0;
       } else {
@@ -196,13 +197,13 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
       }
     }
     break;
-  // 状�?? 5: SOCK_CLOSE_WAIT - 对端请求断开，等待本端关�?
+  // ???? 5: SOCK_CLOSE_WAIT - ??????????????
   case SOCK_CLOSE_WAIT:
     g_client_connected = 0;
     ret = disconnect(sn);
     if (ret != SOCK_OK) {
       printf("[TCP] disconnect() failed: %ld\r\n", (long)ret);
-      // 如果 disconnect 失败，强�? close
+      // ?? disconnect ?????? close
       close(sn);
     }
 
@@ -226,9 +227,9 @@ int32_t tcp_server_task(uint8_t sn, uint8_t *buf, uint16_t port) {
 /* USER CODE BEGIN PV */
 
 #define PHYCFGR_OPMDC_MASK 0x38 // bits 5-3
-#define PHYCFGR_DPX (1 << 2)    // 双工状�??
-#define PHYCFGR_SPD (1 << 1)    // 速度 (1=100M, 0=10M)
-#define PHYCFGR_LNK (1 << 0)    // 链路状�??
+#define PHYCFGR_DPX (1 << 2)    // ??????
+#define PHYCFGR_SPD (1 << 1)    // ?? (1=100M, 0=10M)
+#define PHYCFGR_LNK (1 << 0)    // ??????
 uint8_t get_link_status(void) { return getPHYCFGR() & PHYCFGR_LNK; }
 uint8_t get_link_speed(void) { return (getPHYCFGR() & PHYCFGR_SPD) ? 100 : 10; }
 const char *get_full_duplex(void) {
@@ -297,11 +298,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_SPI1_Init();
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   MX_TIM4_Init();
   MX_TIM1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   // MPU6050_Init();
   w5500_init();
@@ -310,7 +313,7 @@ int main(void)
 
   wiz_NetInfo info;
   wizchip_getnetinfo(&info);
-  // 通过串口打印出来
+  // ????????
   printf("Current MAC Address: %02X:%02X:%02X:%02X:%02X:%02X\r\n", info.mac[0],
          info.mac[1], info.mac[2], info.mac[3], info.mac[4], info.mac[5]);
   // wiz_NetTimeout Timer_out, Timer_out1;
